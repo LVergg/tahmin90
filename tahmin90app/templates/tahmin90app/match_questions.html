@@ -1,0 +1,25 @@
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<h1>{{ match.title }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {% for question in questions %}
+    <div class="question">
+        <h3>{{ question.text }}</h3>
+        {% for key, value in question.choices.items %}
+        <div class="choice">
+            <input type="radio" name="question_{{ question.id }}" value="{{ key }}" id="choice_{{ question.id }}_{{ key }}">
+            <label for="choice_{{ question.id }}_{{ key }}">{{ key }}) {{ value }}</label>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    <button type="submit">Tahminleri Gönder</button>
+</form> 

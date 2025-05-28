@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}{{ match.title }} - Tahminler{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    {% if messages %}
+    <div class="space-y-4 mb-8">
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-{{ message.tags }}{% endif %}">
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Başlık ve Geri Sayım -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold mb-4">{{ match.title }}</h1>
+        
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title justify-center mb-4">Tahmin süresinin bitmesine kalan süre:</h2>
+                <div class="grid grid-flow-col gap-5 text-center auto-cols-max justify-center">
+                    <div class="flex flex-col">
+                        <span class="countdown font-mono text-5xl" id="countdown-days">
+                            <span style="--value:0;"></span>
+                        </span>
+                        gün
+                    </div> 
+                    <div class="flex flex-col">
+                        <span class="countdown font-mono text-5xl" id="countdown-hours">
+                            <span style="--value:0;"></span>
+                        </span>
+                        saat
+                    </div> 
+                    <div class="flex flex-col">
+                        <span class="countdown font-mono text-5xl" id="countdown-minutes">
+                            <span style="--value:0;"></span>
+                        </span>
+                        dakika
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="countdown font-mono text-5xl" id="countdown-seconds">
+                            <span style="--value:0;"></span>
+                        </span>
+                        saniye
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tahmin Formu -->
+    <form method="post" class="space-y-6 pb-24">
+        {% csrf_token %}
+        
+        {% if field_errors.general %}
+        <div class="alert alert-error">
+            <span>{{ field_errors.general }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Kullanıcı Bilgileri -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">Kullanıcı Bilgileri</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control w-full">
+                        <label class="label">
+                            <span class="label-text">Kullanıcı Kodu</span>
+                        </label>
+                        <input type="text" name="user_code" 
+                               class="input input-bordered w-full {% if field_errors.user_code %}input-error{% endif %}" 
+                               required />
+                        {% if field_errors.user_code %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ field_errors.user_code }}</span>
+                        </label>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label">
+                            <span class="label-text">İsminiz</span>
+                        </label>
+                        <input type="text" name="username" 
+                               class="input input-bordered w-full" 
+                               required 
+                               {% if request.user.is_authenticated %}value="{{ request.user.username }}" readonly{% endif %} />
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label">
+                            <span class="label-text">E-mail</span>
+                        </label>
+                        <input type="email" name="email" 
+                               class="input input-bordered w-full {% if field_errors.email %}input-error{% endif %}" 
+                               required />
+                        {% if field_errors.email %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ field_errors.email }}</span>
+                        </label>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label">
+                            <span class="label-text">Telefon Numarası (Opsiyonel)</span>
+                        </label>
+                        <input type="tel" name="phone_number" 
+                               class="input input-bordered w-full {% if field_errors.phone_number %}input-error{% endif %}"
+                               pattern="[0-9]{10,11}" />
+                        {% if field_errors.phone_number %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ field_errors.phone_number }}</span>
+                        </label>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sorular -->
+        <div class="space-y-6">
+            {% for question in questions %}
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h3 class="card-title">{{ question.text }}</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {% for key, value in question.choices.items %}
+                        <div class="form-control">
+                            <label class="label cursor-pointer justify-start gap-4">
+                                <input type="radio" 
+                                       name="question_{{ question.id }}" 
+                                       value="{{ key }}" 
+                                       class="radio radio-primary" 
+                                       required />
+                                <span class="label-text">{{ key }}) {{ value }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Sabit Gönder Butonu -->
+        <div class="fixed bottom-0 left-0 right-0 bg-base-100 shadow-lg p-4">
+            <div class="max-w-4xl mx-auto">
+                <button type="submit" class="btn btn-primary w-full">Tahminleri Gönder</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const matchStartTime = new Date('{{ match.start_time|date:"c" }}');
+    const countdownDays = document.querySelector('#countdown-days span');
+    const countdownHours = document.querySelector('#countdown-hours span');
+    const countdownMinutes = document.querySelector('#countdown-minutes span');
+    const countdownSeconds = document.querySelector('#countdown-seconds span');
+
+    function updateCountdown() {
+        const now = new Date();
+        const timeLeft = matchStartTime - now - (5 * 60 * 1000); // 5 dakika öncesi
+
+        if (timeLeft <= 0) {
+            document.querySelector('.countdown').parentElement.innerHTML = 
+                '<div class="alert alert-error">Tahmin süresi dolmuştur!</div>';
+            return;
+        }
+
+        const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+        countdownDays.style.setProperty('--value', days);
+        countdownHours.style.setProperty('--value', hours);
+        countdownMinutes.style.setProperty('--value', minutes);
+        countdownSeconds.style.setProperty('--value', seconds);
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+});
+</script>
+{% endblock %}
+{% endblock %} 
